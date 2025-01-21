@@ -160,42 +160,75 @@ document.addEventListener('DOMContentLoaded', function() {
     // Add event listener for form submission
     document.getElementById('loginForm').addEventListener('submit', handleLogin);
 
-    // Guest order handler
-    document.getElementById('guestOrderBtn').addEventListener('click', function() {
-        const guestModal = new bootstrap.Modal(document.getElementById('guestModal'));
-        guestModal.show();
-    });
+    // Initialize guest modal
+    const guestModal = new bootstrap.Modal(document.getElementById('guestModal'));
+    
+    // Add click handler for guest button
+    const guestOrderBtn = document.getElementById('guestOrderBtn');
+    if (guestOrderBtn) {
+        guestOrderBtn.addEventListener('click', function() {
+            guestModal.show();
+        });
+    }
 
-    // Guest handler with proper logging
-    document.getElementById('continueAsGuest').addEventListener('click', async function() {
-        const guestData = {
-            name: document.getElementById('guestName').value,
-            email: document.getElementById('guestEmail').value,
-            phone: document.getElementById('guestPhone').value
-        };
+    // Handle guest form submission
+    const guestForm = document.getElementById('guestForm');
+    if (guestForm) {
+        guestForm.addEventListener('submit', handleGuestSubmit);
+    }
+});
 
-        // Generate a unique guest ID
-        const guestId = 'GUEST_' + new Date().getTime();
+// Guest form submit handler
+function handleGuestSubmit(event) {
+    event.preventDefault();
+    
+    try {
+        const guestEmail = document.getElementById('guestEmail').value.trim();
+        const guestPhone = document.getElementById('guestPhone').value.trim();
 
-        // Store guest data and role
-        sessionStorage.setItem('guestData', JSON.stringify(guestData));
-        sessionStorage.setItem('userRole', ROLES.GUEST);
-        sessionStorage.setItem('userId', guestId);
+        if (!guestEmail || !guestPhone) {
+            alert('Please fill in all fields');
+            return;
+        }
 
-        // Log guest access with all required fields
-        await logUserActivity(
-            guestId,
-            'Guest Login',
-            `Guest access initiated`,
-            guestData
-        );
+        // Create guest session
+        const timestamp = Date.now();
+        const randomId = Math.random().toString(36).substring(2, 15);
+        const guestId = `GUEST-${timestamp}-${randomId}`;
+        const guestUsername = `Guest-${guestEmail.split('@')[0]}-${randomId.substring(0, 4)}`;
 
+        // Clear any existing data
+        localStorage.clear();
+        sessionStorage.clear();
+
+        // Set guest data
+        localStorage.setItem('username', guestUsername);
+        localStorage.setItem('customerId', guestId);
+        localStorage.setItem('userRole', 'guest');
+        localStorage.setItem('isGuest', 'true');
+        localStorage.setItem('guestEmail', guestEmail);
+        localStorage.setItem('guestPhone', guestPhone);
+
+        console.log('Guest session created:', {
+            username: guestUsername,
+            customerId: guestId,
+            userRole: 'guest',
+            isGuest: true
+        });
+
+        // Hide modal and redirect
+        const guestModal = bootstrap.Modal.getInstance(document.getElementById('guestModal'));
+        if (guestModal) {
+            guestModal.hide();
+        }
+
+        // Redirect to dashboard
         window.location.href = 'customer/dashboard.html';
-    });
 
-    // Validate guest form before submission
-    document.getElementById('guestForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        document.getElementById('continueAsGuest').click();
-    });
-}); 
+    } catch (error) {
+        console.error('Guest login error:', error);
+        alert('Failed to create guest session. Please try again.');
+        localStorage.clear();
+        sessionStorage.clear();
+    }
+} 
