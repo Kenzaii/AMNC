@@ -10,16 +10,15 @@ window.cart = window.cart || [];
 function showError(message) {
     const mainContainer = document.getElementById('mainContainer');
     if (mainContainer) {
-        mainContainer.innerHTML = `
-            <div class="alert alert-danger">
-                <h4 class="alert-heading">Error</h4>
-                <p>${message}</p>
-                <hr>
-                <button class="btn btn-outline-danger" onclick="window.location.reload()">
-                    <i class="fas fa-sync"></i> Refresh Page
-                </button>
-            </div>
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         `;
+        mainContainer.insertBefore(alertDiv, mainContainer.firstChild);
+    } else {
+        console.error('Error:', message);
     }
 }
 
@@ -568,158 +567,48 @@ async function loadProducts() {
     }
 }
 
-// Initialize cart in localStorage if it doesn't exist
+// Cart functionality
 function initializeCart() {
-    if (!localStorage.getItem('cart')) {
-        localStorage.setItem('cart', JSON.stringify([]));
-    }
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
     updateCartDisplay();
+    console.log('Cart initialized:', cart);
 }
 
-// Function to add item to cart
-function addToCart(productId, productName, price) {
-    try {
-        // Sanitize inputs
-        const sanitizedName = productName.replace(/['"\\]/g, '');
-        const validPrice = parseFloat(price) || 0;
-
-        console.log('Adding to cart:', {
-            productId,
-            productName: sanitizedName,
-            price: validPrice
-        });
-
-        let cart = JSON.parse(localStorage.getItem('cart')) || [];
-        
-        // Check if product already exists in cart
-        const existingItem = cart.find(item => item.productId === productId);
-        
-        if (existingItem) {
-            existingItem.quantity += 1;
-            console.log('Updated quantity for existing item:', existingItem);
-        } else {
-            const newItem = {
-                productId,
-                productName: sanitizedName,
-                price: validPrice,
-                quantity: 1
-            };
-            cart.push(newItem);
-            console.log('Added new item to cart:', newItem);
-        }
-        
-        localStorage.setItem('cart', JSON.stringify(cart));
-        updateCartDisplay();
-        
-        // Show success message
-        showAlert(`Added ${sanitizedName} to cart`, 'success');
-
-        console.log('Current cart:', cart);
-    } catch (error) {
-        console.error('Error adding to cart:', {
-            error,
-            productId,
-            productName,
-            price
-        });
-        showAlert('Failed to add item to cart', 'danger');
-    }
-}
-
-// Function to remove item from cart
-function removeFromCart(productId) {
-    try {
-        let cart = JSON.parse(localStorage.getItem('cart')) || [];
-        cart = cart.filter(item => item.productId !== productId);
-        localStorage.setItem('cart', JSON.stringify(cart));
-        updateCartDisplay();
-    } catch (error) {
-        console.error('Error removing from cart:', error);
-        showAlert('Failed to remove item from cart', 'danger');
-    }
-}
-
-// Function to update cart quantity
-function updateCartQuantity(productId, newQuantity) {
-    try {
-        let cart = JSON.parse(localStorage.getItem('cart')) || [];
-        const item = cart.find(item => item.productId === productId);
-        
-        if (item) {
-            if (newQuantity <= 0) {
-                removeFromCart(productId);
-            } else {
-                item.quantity = newQuantity;
-                localStorage.setItem('cart', JSON.stringify(cart));
-                updateCartDisplay();
-            }
-        }
-    } catch (error) {
-        console.error('Error updating cart quantity:', error);
-        showAlert('Failed to update cart', 'danger');
-    }
-}
-
-// Function to update cart display
 function updateCartDisplay() {
     const cartItems = document.getElementById('cartItems');
     const cartTotal = document.getElementById('cartTotal');
     const checkoutBtn = document.getElementById('checkoutBtn');
     
-    if (!cartItems || !cartTotal || !checkoutBtn) return;
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
     
-    try {
-        const cart = JSON.parse(localStorage.getItem('cart')) || [];
-        
-        if (cart.length === 0) {
-            cartItems.innerHTML = `
-                <div class="cart-empty">
-                    <i class="fas fa-shopping-cart"></i>
-                    <p class="mb-0">Your cart is empty</p>
-                </div>
-            `;
-            cartTotal.textContent = 'SGD 0.00';
-            checkoutBtn.disabled = true;
-            return;
-        }
-        
-        cartItems.innerHTML = cart.map(item => `
+    if (cart.length === 0) {
+        cartItems.innerHTML = '<div class="empty-cart">Your cart is empty</div>';
+        cartTotal.textContent = 'SGD 0.00';
+        checkoutBtn.disabled = true;
+        return;
+    }
+    
+    let total = 0;
+    cartItems.innerHTML = cart.map(item => {
+        const itemTotal = item.price * item.quantity;
+        total += itemTotal;
+        return `
             <div class="cart-item">
-                <div class="d-flex justify-content-between align-items-start">
+                <div class="cart-item-details">
                     <div class="cart-item-name">${item.productName}</div>
-                    <button class="btn btn-sm text-danger p-0" 
-                            onclick="removeFromCart('${item.productId}')"
-                            title="Remove item">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <div class="cart-item-price">SGD ${item.price.toFixed(2)}</div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mt-2">
-                    <div class="cart-quantity-controls">
-                        <button class="btn btn-outline-secondary" type="button" 
-                                onclick="updateCartQuantity('${item.productId}', ${item.quantity - 1})">
-                            <i class="fas fa-minus"></i>
-                        </button>
-                        <input type="number" class="form-control" value="${item.quantity}" 
-                               onchange="updateCartQuantity('${item.productId}', parseInt(this.value))"
-                               min="1">
-                        <button class="btn btn-outline-secondary" type="button"
-                                onclick="updateCartQuantity('${item.productId}', ${item.quantity + 1})">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                    </div>
-                    <span class="cart-item-price">SGD ${(item.price * item.quantity).toFixed(2)}</span>
+                <div class="cart-item-quantity">
+                    <button onclick="updateQuantity('${item.productId}', ${item.quantity - 1})">-</button>
+                    <span>${item.quantity}</span>
+                    <button onclick="updateQuantity('${item.productId}', ${item.quantity + 1})">+</button>
                 </div>
             </div>
-        `).join('');
-        
-        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-        
-        cartTotal.textContent = `SGD ${total.toFixed(2)}`;
-        checkoutBtn.disabled = false;
-    } catch (error) {
-        console.error('Error updating cart display:', error);
-        showAlert('Failed to update cart display', 'danger');
-    }
+        `;
+    }).join('');
+    
+    cartTotal.textContent = `SGD ${total.toFixed(2)}`;
+    checkoutBtn.disabled = false;
 }
 
 // Function to show alerts
@@ -807,4 +696,9 @@ function createProductCard(product, isFavorite = false) {
             </div>
         `;
     }
-} 
+}
+
+// Export functions
+window.initializeCart = initializeCart;
+window.updateCartDisplay = updateCartDisplay;
+window.showError = showError; 
