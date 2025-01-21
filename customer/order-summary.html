@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Summary</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .order-summary-card {
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            border: none;
+        }
+
+        .summary-header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px 8px 0 0;
+        }
+
+        .summary-item {
+            padding: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-name {
+            font-weight: 500;
+            color: #333;
+        }
+
+        .item-price {
+            color: #28a745;
+            font-weight: 500;
+        }
+
+        .summary-total {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-top: 2px solid #dee2e6;
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .action-buttons {
+            padding: 1.5rem;
+            background: #fff;
+            border-radius: 0 0 8px 8px;
+        }
+
+        .btn-modify {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-confirm {
+            background: linear-gradient(135deg, #28a745, #218838);
+            color: white;
+        }
+
+        .btn-confirm:hover {
+            background: linear-gradient(135deg, #218838, #1e7e34);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="dashboard.html">Customer Dashboard</a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="order-summary-card card">
+                    <div class="summary-header">
+                        <h4 class="mb-0">
+                            <i class="fas fa-clipboard-check me-2"></i>
+                            Order Summary
+                        </h4>
+                    </div>
+                    <div id="orderItems">
+                        <!-- Order items will be loaded here -->
+                    </div>
+                    <div class="summary-total d-flex justify-content-between">
+                        <span>Total Amount:</span>
+                        <span id="orderTotal">SGD 0.00</span>
+                    </div>
+                    <div class="action-buttons d-flex gap-3">
+                        <button class="btn btn-modify flex-grow-1" onclick="window.location.href='dashboard.html'">
+                            <i class="fas fa-edit me-2"></i>
+                            Modify Order
+                        </button>
+                        <button class="btn btn-confirm flex-grow-1" onclick="confirmOrder()">
+                            <i class="fas fa-check me-2"></i>
+                            Confirm Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Airtable Configuration
+        const AIRTABLE_URL = 'https://api.airtable.com/v0';
+        const BASE_ID = 'appipp8LFUGElp3Di';
+        const API_KEY = 'pathhm43xpa5TmwaG.3b6a259e92f40f97170ba1680a4db0af5c767076db223aef553ae844cf94e542';
+
+        // Load order details from localStorage
+        document.addEventListener('DOMContentLoaded', function() {
+            const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+            const orderItems = document.getElementById('orderItems');
+            const orderTotal = document.getElementById('orderTotal');
+            let total = 0;
+
+            if (cart.length === 0) {
+                window.location.href = 'dashboard.html';
+                return;
+            }
+
+            // Display order items
+            orderItems.innerHTML = cart.map(item => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                return `
+                    <div class="summary-item">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <div class="item-name">${item.productName}</div>
+                                <div class="text-muted">Quantity: ${item.quantity}</div>
+                            </div>
+                            <div class="item-price">SGD ${itemTotal.toFixed(2)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // Update total
+            orderTotal.textContent = `SGD ${total.toFixed(2)}`;
+        });
+
+        // Function to confirm order
+        async function confirmOrder() {
+            try {
+                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+                if (cart.length === 0) {
+                    alert('Your cart is empty');
+                    return;
+                }
+
+                const customerId = localStorage.getItem('customerId');
+                if (!customerId) {
+                    throw new Error('Customer ID not found. Please log in again.');
+                }
+
+                const orderItems = cart.map(item => 
+                    `${item.productName} (Quantity: ${item.quantity})`
+                ).join('\n');
+                const totalAmount = cart.reduce((sum, item) => 
+                    sum + (item.price * item.quantity), 0
+                );
+
+                // Generate Order ID (timestamp + random string)
+                const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                
+                // Get current date in ISO format
+                const orderDate = new Date().toISOString().split('T')[0];
+
+                console.log('Sending order:', {
+                    customerId,
+                    orderItems,
+                    totalAmount,
+                    orderId,
+                    orderDate,
+                    url: `${AIRTABLE_URL}/${BASE_ID}/Orders`
+                });
+
+                const response = await fetch(`${AIRTABLE_URL}/${BASE_ID}/Orders`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        fields: {
+                            'Customer ID': customerId,
+                            'Products Ordered': orderItems,
+                            'Total Price': totalAmount,
+                            'Order Date': orderDate,
+                            'Order ID': orderId
+                        }
+                    })
+                });
+
+                const responseData = await response.json();
+                console.log('Airtable response:', responseData);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to create order: ${responseData.error?.message || response.statusText}`);
+                }
+
+                // Clear cart and redirect to success page
+                localStorage.setItem('cart', JSON.stringify([]));
+                alert('Order placed successfully!');
+                window.location.href = 'dashboard.html';
+
+            } catch (error) {
+                console.error('Checkout error:', {
+                    message: error.message,
+                    stack: error.stack,
+                    localStorage: {
+                        customerId: localStorage.getItem('customerId'),
+                        username: localStorage.getItem('username'),
+                        cartItems: localStorage.getItem('cart')
+                    }
+                });
+                alert('Failed to place order: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html> 

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order History</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .order-card {
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 1rem;
+            border-radius: 8px;
+        }
+
+        .order-header {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .order-body {
+            padding: 1rem;
+        }
+
+        .order-items {
+            margin: 1rem 0;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .order-total {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #28a745;
+        }
+
+        .order-date {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+        }
+
+        .order-date i {
+            font-size: 0.8rem;
+        }
+
+        .order-id {
+            font-size: 0.9rem;
+            color: #fff;
+            background: rgba(255,255,255,0.2);
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .no-orders {
+            text-align: center;
+            padding: 3rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-top: 2rem;
+        }
+
+        .no-orders i {
+            font-size: 3rem;
+            color: #dee2e6;
+            margin-bottom: 1rem;
+        }
+
+        /* Add responsive adjustments */
+        @media (max-width: 576px) {
+            .order-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .order-date {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="dashboard.html">Customer Dashboard</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="dashboard.html">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="order-history.html">Orders</a>
+                    </li>
+                </ul>
+                <div class="ms-auto">
+                    <button class="btn btn-outline-light" onclick="clearSession()">
+                        <i class="fas fa-sign-out-alt"></i> Logout
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container mt-4">
+        <h2 class="mb-4">Order History</h2>
+        <div id="ordersList">
+            <!-- Orders will be loaded here -->
+            <div class="text-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Airtable Configuration
+        const AIRTABLE_URL = 'https://api.airtable.com/v0';
+        const BASE_ID = 'appipp8LFUGElp3Di';
+        const API_KEY = 'pathhm43xpa5TmwaG.3b6a259e92f40f97170ba1680a4db0af5c767076db223aef553ae844cf94e542';
+
+        // Function to load orders
+        async function loadOrders() {
+            try {
+                const customerId = localStorage.getItem('customerId');
+                console.log('Current user session:', {
+                    customerId,
+                    username: localStorage.getItem('username'),
+                    userRole: localStorage.getItem('userRole'),
+                    allStorage: { ...localStorage }
+                });
+
+                if (!customerId) {
+                    throw new Error('Customer ID not found. Please log in again.');
+                }
+
+                // Now get the orders with proper error handling
+                try {
+                    // URL encode the filter formula properly
+                    const filterFormula = encodeURIComponent(`{Customer ID}="${customerId}"`);
+                    const url = `${AIRTABLE_URL}/${BASE_ID}/Orders?filterByFormula=${filterFormula}&sort%5B0%5D%5Bfield%5D=Order+Date&sort%5B0%5D%5Bdirection%5D=desc`;
+                    
+                    console.log('Fetching orders with URL:', url);
+
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${API_KEY}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error('API Error Response:', errorData);
+                        throw new Error(`API Error: ${errorData.error?.message || response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('Orders data received:', {
+                        total: data.records?.length,
+                        firstRecord: data.records?.[0]
+                    });
+
+                    const ordersList = document.getElementById('ordersList');
+
+                    if (!data.records || data.records.length === 0) {
+                        ordersList.innerHTML = `
+                            <div class="no-orders">
+                                <i class="fas fa-shopping-bag"></i>
+                                <h4>No Orders Yet</h4>
+                                <p class="text-muted">Your order history will appear here</p>
+                                <a href="dashboard.html" class="btn btn-primary">
+                                    <i class="fas fa-shopping-cart me-2"></i>Start Shopping
+                                </a>
+                            </div>
+                        `;
+                        return;
+                    }
+
+                    ordersList.innerHTML = data.records.map(order => {
+                        try {
+                            // Format date and time
+                            const orderDate = new Date(order.fields['Order Date']);
+                            const dateFormatted = orderDate.toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                            });
+                            const timeFormatted = orderDate.toLocaleTimeString('en-US', {
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            });
+
+                            return `
+                                <div class="order-card card">
+                                    <div class="order-header">
+                                        <div class="order-id">
+                                            <i class="fas fa-receipt me-1"></i>
+                                            ${order.fields['Order ID'] || 'N/A'}
+                                        </div>
+                                        <div class="order-date">
+                                            <i class="fas fa-calendar-alt me-1"></i>
+                                            ${dateFormatted}
+                                            <i class="fas fa-clock ms-2 me-1"></i>
+                                            ${timeFormatted}
+                                        </div>
+                                    </div>
+                                    <div class="order-body">
+                                        <div class="order-items">
+                                            <h6>Items Ordered:</h6>
+                                            <pre class="mb-0" style="white-space: pre-wrap;">${order.fields['Products Ordered'] || 'No items listed'}</pre>
+                                        </div>
+                                        <div class="order-total">
+                                            Total: SGD ${parseFloat(order.fields['Total Price'] || 0).toFixed(2)}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                        } catch (error) {
+                            console.error('Error processing order:', order, error);
+                            return `
+                                <div class="alert alert-warning">
+                                    Error displaying order
+                                </div>
+                            `;
+                        }
+                    }).join('');
+
+                } catch (error) {
+                    console.error('API request error:', error);
+                    throw new Error(`Failed to fetch orders: ${error.message}`);
+                }
+
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                document.getElementById('ordersList').innerHTML = `
+                    <div class="alert alert-danger">
+                        <h5>Error Loading Orders</h5>
+                        <p>${error.message}</p>
+                        <div class="mt-3">
+                            <button class="btn btn-outline-danger btn-sm me-2" onclick="loadOrders()">
+                                <i class="fas fa-sync"></i> Try Again
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm" onclick="window.location.href='dashboard.html'">
+                                <i class="fas fa-home"></i> Return to Dashboard
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Add auth check when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                const customerId = localStorage.getItem('customerId');
+                const username = localStorage.getItem('username');
+                const userRole = localStorage.getItem('userRole');
+                
+                console.log('Current session:', { customerId, username, userRole });
+                
+                if (!customerId || !username) {
+                    throw new Error('Session data missing');
+                }
+
+                // Allow customer, user, and guest roles
+                if (userRole && userRole !== 'customer' && userRole !== 'user' && userRole !== 'guest') {
+                    throw new Error('Invalid user role');
+                }
+                
+                // Update navbar with username
+                const navbar = document.querySelector('.navbar-nav');
+                if (navbar) {
+                    navbar.innerHTML = `
+                        <li class="nav-item">
+                            <a class="nav-link" href="dashboard.html">Home</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="order-history.html">Orders</a>
+                        </li>
+                        <li class="nav-item ms-3">
+                            <span class="nav-link text-light">Welcome, ${username}</span>
+                        </li>
+                    `;
+                }
+                
+                // Load orders
+                loadOrders();
+                
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                clearSession();
+            }
+        });
+
+        // Update the clearSession function
+        function clearSession() {
+            try {
+                console.log('Clearing session...');
+                
+                // Clear all storage
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Clear cookies
+                document.cookie.split(";").forEach(function(c) { 
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
+                
+                console.log('Session cleared, redirecting to login');
+                window.location.replace('../login.html');
+            } catch (error) {
+                console.error('Error during session clearing:', error);
+                // Fallback redirect
+                window.location.href = '../login.html';
+            }
+        }
+    </script>
+</body>
+</html> 
