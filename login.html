@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Order System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="css/login.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <div class="row justify-content-center mt-5">
+            <div class="col-md-6">
+                <div class="card shadow">
+                    <div class="card-body">
+                        <h3 class="text-center mb-4">Order System Login</h3>
+                        
+                        <!-- Login Form -->
+                        <form id="loginForm">
+                            <div class="mb-3">
+                                <label for="username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="username" required>
+                            </div>
+                            <div class="mb-3">
+                                <label for="password" class="form-label">Password</label>
+                                <input type="password" class="form-control" id="password" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Login</button>
+                        </form>
+
+                        <!-- Debug info section -->
+                        <div id="debugInfo" class="mt-3" style="display: none;">
+                            <div class="alert alert-info">
+                                <h6>Debug Information</h6>
+                                <pre class="mb-0 bg-light p-2 small"></pre>
+                            </div>
+                        </div>
+
+                        <!-- Guest Order Option -->
+                        <div class="text-center mt-4">
+                            <p>Don't have an account?</p>
+                            <button id="guestOrderBtn" class="btn btn-outline-secondary">Continue as Guest</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guest Order Modal -->
+    <div class="modal fade" id="guestModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Continue as Guest</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="guestForm">
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="guestEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Phone</label>
+                            <input type="tel" class="form-control" id="guestPhone" required>
+                        </div>
+                        <div class="modal-footer px-0 pb-0">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="submit" class="btn btn-primary">Continue as Guest</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="config.js"></script>
+    <script src="js/login.js"></script>
+    <script>
+        // Clear any existing sessions first
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Then check if somehow still logged in
+        const checkLoginStatus = () => {
+            const username = localStorage.getItem('username');
+            const userRole = localStorage.getItem('userRole');
+            
+            if (username && userRole) {
+                console.log('Clearing existing session data');
+                localStorage.clear();
+                sessionStorage.clear();
+                
+                // Force reload the page to ensure clean state
+                window.location.reload();
+            }
+        };
+
+        // Run check immediately
+        checkLoginStatus();
+        
+        // Also run check when page becomes visible
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                checkLoginStatus();
+            }
+        });
+
+        // Handle regular login
+        document.getElementById('loginForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                console.log('Attempting login for:', username);
+
+                const response = await fetch(
+                    `${AIRTABLE_URL}/${BASE_ID}/Users?filterByFormula={Username}='${username}'`,
+                    {
+                        headers: {
+                            'Authorization': `Bearer ${API_KEY}`
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    throw new Error('Failed to connect to server');
+                }
+
+                const data = await response.json();
+                console.log('Login response:', data);
+
+                if (data.records && data.records.length > 0) {
+                    const user = data.records[0];
+                    
+                    if (user.fields.Password === password) {
+                        // Store user data
+                        localStorage.setItem('username', user.fields.Username);
+                        localStorage.setItem('customerId', user.fields.CustomerID || user.id);
+                        localStorage.setItem('userRole', user.fields.Role || 'customer');
+                        localStorage.setItem('userId', user.id);
+
+                        console.log('Login successful:', {
+                            username: user.fields.Username,
+                            role: user.fields.Role,
+                            customerId: user.fields.CustomerID
+                        });
+
+                        // Redirect based on role
+                        if (user.fields.Role === 'admin') {
+                            window.location.href = 'admin/dashboard.html';
+                        } else {
+                            window.location.href = 'customer/dashboard.html';
+                        }
+                    } else {
+                        alert('Invalid password');
+                    }
+                } else {
+                    alert('User not found');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Login failed: ' + error.message);
+            }
+        });
+
+        // Add this at the top of your script section
+        let guestLoginInProgress = false;
+
+        // Update the guest login handler
+        document.getElementById('continueAsGuest').addEventListener('click', function(event) {
+            event.preventDefault();
+            
+            if (guestLoginInProgress) {
+                console.log('Guest login already in progress');
+                return;
+            }
+            
+            guestLoginInProgress = true;
+            console.log('Starting guest login process');
+
+            try {
+                const guestEmail = document.getElementById('guestEmail').value.trim();
+                const guestPhone = document.getElementById('guestPhone').value.trim();
+
+                if (!guestEmail || !guestPhone) {
+                    alert('Please fill in all fields');
+                    guestLoginInProgress = false;
+                    return;
+                }
+
+                // Create guest session data
+                const timestamp = Date.now();
+                const randomId = Math.random().toString(36).substring(2, 15);
+                const guestId = `GUEST-${timestamp}-${randomId}`;
+                const guestUsername = `Guest-${guestEmail.split('@')[0]}-${randomId.substring(0, 4)}`;
+
+                // Clear any existing data
+                localStorage.clear();
+                sessionStorage.clear();
+
+                // Set guest data
+                localStorage.setItem('username', guestUsername);
+                localStorage.setItem('customerId', guestId);
+                localStorage.setItem('userRole', 'guest');
+                localStorage.setItem('isGuest', 'true');
+                localStorage.setItem('guestEmail', guestEmail);
+                localStorage.setItem('guestPhone', guestPhone);
+
+                // Verify data was stored
+                const storedData = {
+                    username: localStorage.getItem('username'),
+                    customerId: localStorage.getItem('customerId'),
+                    userRole: localStorage.getItem('userRole'),
+                    isGuest: localStorage.getItem('isGuest')
+                };
+
+                console.log('Guest session created:', storedData);
+
+                if (!storedData.username || !storedData.customerId || !storedData.userRole || !storedData.isGuest) {
+                    throw new Error('Failed to store guest session data');
+                }
+
+                // Close modal first
+                const modal = document.getElementById('guestModal');
+                if (modal) {
+                    const bsModal = bootstrap.Modal.getInstance(modal);
+                    if (bsModal) {
+                        bsModal.hide();
+                    }
+                    // Wait for modal to close
+                    modal.addEventListener('hidden.bs.modal', function() {
+                        console.log('Modal closed, redirecting...');
+                        // Redirect after modal is closed
+                        window.location.href = 'customer/dashboard.html';
+                    }, { once: true });
+                } else {
+                    // If no modal, redirect immediately
+                    window.location.href = 'customer/dashboard.html';
+                }
+
+            } catch (error) {
+                console.error('Guest login error:', error);
+                alert('Failed to create guest session: ' + error.message);
+                localStorage.clear();
+                sessionStorage.clear();
+            } finally {
+                guestLoginInProgress = false;
+            }
+        });
+
+        // Add form submit prevention for guest modal
+        document.getElementById('guestForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            document.getElementById('continueAsGuest').click();
+        });
+
+        // Add modal event listeners
+        const guestModal = document.getElementById('guestModal');
+        if (guestModal) {
+            guestModal.addEventListener('show.bs.modal', function() {
+                console.log('Guest modal opening');
+                // Clear form fields
+                document.getElementById('guestEmail').value = '';
+                document.getElementById('guestPhone').value = '';
+            });
+
+            guestModal.addEventListener('hidden.bs.modal', function() {
+                console.log('Guest modal closed');
+                // Reset progress flag
+                guestLoginInProgress = false;
+            });
+        }
+
+        // Add this at the top of your script section
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize the guest modal
+            const guestModal = new bootstrap.Modal(document.getElementById('guestModal'));
+            
+            // Add click handler for the guest button
+            document.getElementById('guestOrderBtn').addEventListener('click', function() {
+                guestModal.show();
+            });
+
+            // Handle guest form submission
+            document.getElementById('guestForm').addEventListener('submit', function(event) {
+                event.preventDefault();
+                
+                try {
+                    const guestEmail = document.getElementById('guestEmail').value.trim();
+                    const guestPhone = document.getElementById('guestPhone').value.trim();
+
+                    if (!guestEmail || !guestPhone) {
+                        alert('Please fill in all fields');
+                        return;
+                    }
+
+                    // Create guest session
+                    const timestamp = Date.now();
+                    const randomId = Math.random().toString(36).substring(2, 15);
+                    const guestId = `GUEST-${timestamp}-${randomId}`;
+                    const guestUsername = `Guest-${guestEmail.split('@')[0]}-${randomId.substring(0, 4)}`;
+
+                    // Clear any existing data
+                    localStorage.clear();
+                    sessionStorage.clear();
+
+                    // Set guest data
+                    localStorage.setItem('username', guestUsername);
+                    localStorage.setItem('customerId', guestId);
+                    localStorage.setItem('userRole', 'guest');
+                    localStorage.setItem('isGuest', 'true');
+                    localStorage.setItem('guestEmail', guestEmail);
+                    localStorage.setItem('guestPhone', guestPhone);
+
+                    console.log('Guest session created:', {
+                        username: guestUsername,
+                        customerId: guestId,
+                        userRole: 'guest',
+                        isGuest: true
+                    });
+
+                    // Hide modal
+                    guestModal.hide();
+
+                    // Redirect to dashboard
+                    window.location.href = 'customer/dashboard.html';
+
+                } catch (error) {
+                    console.error('Guest login error:', error);
+                    alert('Failed to create guest session. Please try again.');
+                    localStorage.clear();
+                    sessionStorage.clear();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Restricted</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/boxicons@2.0.7/css/boxicons.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <style>
+        .restricted-container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .contact-options {
+            margin-top: 30px;
+        }
+        .chat-container {
+            margin-top: 20px;
+            display: none;
+        }
+        .order-history {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container restricted-container">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h3 class="card-title text-center text-danger">
+                    <i class='bx bx-lock-alt'></i> Account Access Restricted
+                </h3>
+                <div class="alert alert-warning mt-3">
+                    Your account has been placed on hold. Please contact our customer service for assistance.
+                </div>
+                
+                <div class="contact-options">
+                    <h5>Contact Options:</h5>
+                    <div class="list-group">
+                        <a href="tel:+1234567890" class="list-group-item list-group-item-action">
+                            <i class='bx bx-phone'></i> Call Customer Service: +1234567890
+                        </a>
+                        <button class="list-group-item list-group-item-action" id="showChat">
+                            <i class='bx bx-chat'></i> Chat with Support
+                        </button>
+                        <a href="mailto:support@example.com" class="list-group-item list-group-item-action">
+                            <i class='bx bx-envelope'></i> Email Support
+                        </a>
+                    </div>
+                </div>
+
+                <div id="chatContainer" class="chat-container">
+                    <div class="card">
+                        <div class="card-header">
+                            Chat Support
+                        </div>
+                        <div class="card-body">
+                            <div id="chatMessages" style="height: 300px; overflow-y: auto;" class="mb-3">
+                                <!-- Chat messages will appear here -->
+                            </div>
+                            <div class="input-group">
+                                <input type="text" id="chatInput" class="form-control" placeholder="Type your message...">
+                                <button class="btn btn-primary" id="sendMessage">Send</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order History Section -->
+        <div class="card">
+            <div class="card-body">
+                <h4 class="card-title">Order History</h4>
+                <div class="table-responsive">
+                    <table id="orderHistoryTable" class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Order ID</th>
+                                <th>Date</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderHistoryList">
+                            <!-- Order data will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="login.html" class="btn btn-secondary">
+                <i class='bx bx-log-out'></i> Back to Login
+            </a>
+        </div>
+    </div>
+
+    <!-- Order Details Modal -->
+    <div class="modal fade" id="orderDetailsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Order Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Order details will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+    <script>
+        // Configuration
+        const AIRTABLE_URL = 'https://api.airtable.com/v0';
+        const BASE_ID = 'appipp8LFUGElp3Di';
+        const API_KEY = 'pathhm43xpa5TmwaG.3b6a259e92f40f97170ba1680a4db0af5c767076db223aef553ae844cf94e542';
+
+        async function loadOrderHistory() {
+            const customerId = sessionStorage.getItem('customerId');
+            console.log('Loading orders for customer:', customerId);
+
+            if (!customerId) {
+                console.error('No customer ID found');
+                showError('Customer ID not found. Please try logging in again.');
+                return;
+            }
+
+            try {
+                const filterFormula = encodeURIComponent(`{Customer ID}="${customerId}"`);
+                const url = `${AIRTABLE_URL}/${BASE_ID}/Orders?filterByFormula=${filterFormula}`;
+                
+                console.log('Request URL:', url);
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Response error:', errorText);
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('Orders data:', data);
+
+                // Get the table body
+                const orderHistoryList = document.getElementById('orderHistoryList');
+
+                // Clear existing content
+                orderHistoryList.innerHTML = '';
+
+                if (data.records && data.records.length > 0) {
+                    // Create table content
+                    data.records.forEach(order => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${order.fields['Order ID'] || ''}</td>
+                            <td>${formatDate(order.fields['Order Date']) || ''}</td>
+                            <td>$${order.fields['Total Price'] || '0'}</td>
+                            <td>
+                                <span class="badge ${getStatusBadgeClass(order.fields.Status)}">
+                                    ${order.fields.Status || 'pending'}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-info view-order" 
+                                        data-id="${order.id}"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#orderDetailsModal">
+                                    <i class="bx bx-show"></i> View Details
+                                </button>
+                            </td>
+                        `;
+                        orderHistoryList.appendChild(row);
+                    });
+                } else {
+                    orderHistoryList.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="text-center">
+                                <div class="alert alert-info mb-0">
+                                    No orders found for your account.
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+                // Add event listeners for view buttons
+                document.querySelectorAll('.view-order').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const orderId = this.getAttribute('data-id');
+                        viewOrderDetails(orderId);
+                    });
+                });
+
+            } catch (error) {
+                console.error('Detailed error:', error);
+                showError(`Failed to load orders: ${error.message}`);
+            }
+        }
+
+        async function viewOrderDetails(orderId) {
+            try {
+                const response = await fetch(`${AIRTABLE_URL}/${BASE_ID}/Orders/${orderId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`
+                    }
+                });
+                
+                const data = await response.json();
+                console.log('Order details:', data);
+
+                const modalBody = document.querySelector('#orderDetailsModal .modal-body');
+                modalBody.innerHTML = `
+                    <div class="order-details">
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <p><strong>Order ID:</strong> ${data.fields['Order ID'] || 'N/A'}</p>
+                                <p><strong>Order Date:</strong> ${formatDate(data.fields['Order Date']) || 'N/A'}</p>
+                            </div>
+                            <div class="col-6">
+                                <p><strong>Total Amount:</strong> $${data.fields['Total Price'] || '0'}</p>
+                                <p><strong>Status:</strong> 
+                                    <span class="badge ${getStatusBadgeClass(data.fields.Status)}">
+                                        ${data.fields.Status || 'pending'}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        <hr>
+                        <h6>Products Ordered:</h6>
+                        <div class="products-list">
+                            <p>${data.fields['Products Ordered'] || 'No products information available'}</p>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading order details:', error);
+                alert('Failed to load order details');
+            }
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'N/A';
+            try {
+                const date = new Date(dateString);
+                if (isNaN(date.getTime())) return 'Invalid Date';
+                return date.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (error) {
+                console.error('Date formatting error:', error);
+                return 'Invalid Date';
+            }
+        }
+
+        function getStatusBadgeClass(status) {
+            switch(status?.toLowerCase()) {
+                case 'completed':
+                    return 'bg-success';
+                case 'pending':
+                    return 'bg-warning';
+                case 'cancelled':
+                    return 'bg-danger';
+                default:
+                    return 'bg-secondary';
+            }
+        }
+
+        // Helper function to show errors
+        function showError(message) {
+            const orderHistoryList = document.getElementById('orderHistoryList');
+            if (orderHistoryList) {
+                orderHistoryList.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center">
+                            <div class="alert alert-danger mb-0">
+                                ${message}
+                                <br>
+                                <small class="mt-2 d-block">
+                                    Technical details have been logged for our support team.
+                                </small>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // Add this function to check Airtable field names
+        async function debugAirtableFields() {
+            try {
+                const response = await fetch(`${AIRTABLE_URL}/${BASE_ID}/Orders?maxRecords=1`, {
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`
+                    }
+                });
+                const data = await response.json();
+                if (data.records && data.records.length > 0) {
+                    console.log('Airtable fields available:', Object.keys(data.records[0].fields));
+                }
+            } catch (error) {
+                console.error('Error checking fields:', error);
+            }
+        }
+
+        // Initialize when document is ready
+        $(document).ready(function() {
+            console.log('Page loaded, initializing...');
+            
+            if (sessionStorage.getItem('customerId')) {
+                loadOrderHistory();
+            } else {
+                showError('Session data missing. Please try logging in again.');
+            }
+
+            // Chat functionality
+            $('#showChat').click(function() {
+                $('#chatContainer').slideToggle();
+            });
+
+            $('#sendMessage').click(function() {
+                const message = $('#chatInput').val().trim();
+                if (message) {
+                    appendMessage('You: ' + message, 'text-end');
+                    $('#chatInput').val('');
+                    
+                    setTimeout(() => {
+                        appendMessage('Support: Thank you for contacting us. A customer service representative will be with you shortly. For immediate assistance, please call our support line at +1234567890.', 'text-start');
+                    }, 1000);
+                }
+            });
+
+            $('#chatInput').keypress(function(e) {
+                if (e.which === 13) {
+                    $('#sendMessage').click();
+                }
+            });
+
+            function appendMessage(message, alignment) {
+                const messageDiv = $('<div>')
+                    .addClass('mb-2 ' + alignment)
+                    .text(message);
+                $('#chatMessages').append(messageDiv);
+                $('#chatMessages').scrollTop($('#chatMessages')[0].scrollHeight);
+            }
+        });
+    </script>
+</body>
+</html> 
