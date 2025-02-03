@@ -271,6 +271,38 @@
                 padding: 0.25rem;
             }
         }
+
+        /* Add this CSS to your page for the toast styling */
+        .custom-toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #fff;
+            padding: 15px 25px;
+            min-width: 200px;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .custom-toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .custom-toast.success {
+            border-left: 4px solid #28a745;
+        }
+
+        .custom-toast.error {
+            border-left: 4px solid #dc3545;
+        }
     </style>
 </head>
 <body>
@@ -478,6 +510,434 @@
         window.checkAuth = checkAuth;
         window.handleNavClick = handleNavClick;
         window.clearSession = clearSession;
+
+        // Function to load and display products
+        async function loadProducts() {
+            try {
+                const response = await fetch(`${window.AIRTABLE_URL}/${window.BASE_ID}/Products`, {
+                    headers: {
+                        'Authorization': `Bearer ${window.API_KEY}`
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Failed to fetch products');
+                
+                const data = await response.json();
+                const productsContainer = document.getElementById('productsContainer');
+                
+                // Debug log
+                console.log("Loaded products:", data.records);
+                
+                productsContainer.innerHTML = data.records.map(product => `
+                    <div class="col-md-4 mb-4">
+                        <div class="card product-card">
+                            <img src="${product.fields.ImageURL || 'placeholder-image-url.jpg'}" 
+                                 class="card-img-top product-image" 
+                                 alt="${product.fields.Name}">
+                            <div class="card-body">
+                                <h5 class="card-title">${product.fields.Name}</h5>
+                                <p class="card-text product-price">SGD ${product.fields.Price}</p>
+                                <button onclick="addToCart('${product.id}', '${product.fields.Name}', ${product.fields.Price})" 
+                                        class="btn btn-primary btn-sm w-100">
+                                    <i class="fas fa-cart-plus"></i> Add to Cart
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error loading products:', error);
+                showToast('Failed to load products', 'error');
+            }
+        }
+
+        // Update the addToCart function
+        function addToCart(productId, productName, price) {
+            try {
+                // Debug logs
+                console.log("Adding to cart with params:", { productId, productName, price });
+                
+                // Input validation
+                if (!productId || !productName || !price) {
+                    throw new Error("Invalid product details");
+                }
+                
+                let cart = JSON.parse(localStorage.getItem("cart")) || [];
+                console.log("Current cart before update:", cart);
+                
+                const existingProduct = cart.find(item => item.productId === productId);
+                
+                if (existingProduct) {
+                    existingProduct.quantity += 1;
+                } else {
+                    cart.push({
+                        productId: productId,
+                        name: productName,
+                        price: parseFloat(price),
+                        quantity: 1
+                    });
+                }
+                
+                // Save and verify cart update
+                localStorage.setItem("cart", JSON.stringify(cart));
+                console.log("Updated cart:", JSON.parse(localStorage.getItem("cart")));
+                
+                updateCartDisplay();
+                displayOrderSummary();
+                
+                document.getElementById("checkoutBtn").disabled = cart.length === 0;
+                showToast(`Added ${productName} to cart`);
+                
+            } catch (error) {
+                console.error("Error in addToCart:", error);
+                showToast(`Error: ${error.message}`, "error");
+            }
+        }
+
+        // Update the displayOrderSummary function
+        function displayOrderSummary() {
+            try {
+                const cart = JSON.parse(localStorage.getItem("cart")) || [];
+                console.log("Displaying order summary for cart:", cart);
+                
+                const summaryContainer = document.querySelector(".order-summary");
+                let totalAmount = 0;
+                
+                const summaryHTML = cart.map(item => {
+                    const itemTotal = item.price * item.quantity;
+                    totalAmount += itemTotal;
+                    
+                    return `
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div>
+                                <div class="fw-bold">${item.name}</div>
+                                <div class="text-muted">Quantity: ${item.quantity}</div>
+                            </div>
+                            <div class="text-success">SGD ${itemTotal.toFixed(2)}</div>
+                        </div>
+                    `;
+                }).join('');
+                
+                // Update the summary display
+                const orderSummaryElement = document.getElementById("orderSummaryItems");
+                if (orderSummaryElement) {
+                    orderSummaryElement.innerHTML = summaryHTML;
+                    document.getElementById("totalAmount").textContent = `SGD ${totalAmount.toFixed(2)}`;
+                }
+                
+            } catch (error) {
+                console.error("Error displaying order summary:", error);
+                showToast("Failed to display order summary", "error");
+            }
+        }
+
+        // Helper function to update cart display
+        function updateCartDisplay() {
+            const cartItems = document.getElementById("cartItems");
+            const cartTotal = document.getElementById("cartTotal");
+            const cart = JSON.parse(localStorage.getItem("cart")) || [];
+            
+            if (cart.length === 0) {
+                cartItems.innerHTML = `
+                    <div class="cart-empty">
+                        <i class="fas fa-shopping-cart"></i>
+                        <p>Your cart is empty</p>
+                    </div>
+                `;
+                cartTotal.textContent = "SGD 0.00";
+                return;
+            }
+            
+            let total = 0;
+            cartItems.innerHTML = cart.map(item => {
+                const itemTotal = item.price * item.quantity;
+                total += itemTotal;
+                return `
+                    <div class="cart-item">
+                        <div class="cart-item-name">${item.name}</div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="cart-quantity-controls">
+                                <button class="btn btn-sm btn-outline-secondary" 
+                                    onclick="updateQuantity('${item.productId}', ${item.quantity - 1})">-</button>
+                                <input type="number" value="${item.quantity}" min="1" max="99"
+                                    onchange="updateQuantity('${item.productId}', this.value)">
+                                <button class="btn btn-sm btn-outline-secondary" 
+                                    onclick="updateQuantity('${item.productId}', ${item.quantity + 1})">+</button>
+                            </div>
+                            <div class="cart-item-price">SGD ${itemTotal.toFixed(2)}</div>
+                        </div>
+                    </div>
+                `;
+            }).join("");
+            
+            cartTotal.textContent = `SGD ${total.toFixed(2)}`;
+        }
+
+        // Helper function to update quantity
+        function updateQuantity(productId, newQuantity) {
+            try {
+                let cart = JSON.parse(localStorage.getItem("cart")) || [];
+                newQuantity = parseInt(newQuantity);
+                
+                if (newQuantity < 1) {
+                    cart = cart.filter(item => item.productId !== productId);
+                } else {
+                    const item = cart.find(item => item.productId === productId);
+                    if (item) {
+                        item.quantity = newQuantity;
+                    }
+                }
+                
+                localStorage.setItem("cart", JSON.stringify(cart));
+                updateCartDisplay();
+                
+                // Enable/disable checkout button based on cart contents
+                document.getElementById("checkoutBtn").disabled = cart.length === 0;
+                
+            } catch (error) {
+                console.error("Error updating quantity:", error);
+                showToast("Failed to update quantity", "error");
+            }
+        }
+
+        // Add this function to handle checkout
+        function checkout() {
+            try {
+                const cart = JSON.parse(localStorage.getItem("cart")) || [];
+                console.log("Checkout initiated with cart:", cart); // Debug log
+                
+                if (cart.length === 0) {
+                    showToast("Your cart is empty!");
+                    return;
+                }
+
+                // Get the main container and clear it
+                const mainContainer = document.getElementById("mainContainer");
+                mainContainer.innerHTML = `
+                    <div class="row justify-content-center">
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header bg-primary text-white">
+                                    <i class="fas fa-clipboard-list me-2"></i>
+                                    Order Summary
+                                </div>
+                                <div class="card-body">
+                                    <div id="orderSummaryItems">
+                                        ${cart.map(item => `
+                                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                                <div>
+                                                    <h6 class="mb-0">${item.name}</h6>
+                                                    <small class="text-muted">Quantity: ${item.quantity}</small>
+                                                </div>
+                                                <div class="text-success fw-bold">
+                                                    SGD ${(item.price * item.quantity).toFixed(2)}
+                                                </div>
+                                            </div>
+                                        `).join('')}
+                                    </div>
+                                    
+                                    <!-- Delivery Information Card -->
+                                    <div class="alert alert-info mt-4 mb-3">
+                                        <h6 class="alert-heading mb-2">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Delivery Information
+                                        </h6>
+                                        <ul class="mb-0 ps-3">
+                                            <li>Order cut off timing Monday-Saturday 9am.</li>
+                                            <li>Same day delivery if order placed before 9am, delivery window 2pm-10pm</li>
+                                            <li>Closed on Sundays and PH.</li>
+                                            <li>Contact Customer Service Ordering Hotline: 
+                                                <a href="tel:91555465" class="alert-link">9155 5465</a> 
+                                                for urgent requests.
+                                            </li>
+                                            <li>We deliver to all locations in Singapore except restricted zones and the offshore islands.</li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                                        <h5 class="mb-0">Total Amount:</h5>
+                                        <h5 class="mb-0 text-success" id="totalAmount">
+                                            SGD ${cart.reduce((total, item) => total + (item.price * item.quantity), 0).toFixed(2)}
+                                        </h5>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex gap-2 mt-4">
+                                <button class="btn btn-secondary flex-grow-1" onclick="modifyOrder()">
+                                    <i class="fas fa-edit me-2"></i>
+                                    Modify Order
+                                </button>
+                                <button class="btn btn-success flex-grow-1" onclick="confirmOrder()">
+                                    <i class="fas fa-check me-2"></i>
+                                    Confirm Order
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+            } catch (error) {
+                console.error("Error during checkout:", error);
+                showToast("Failed to process checkout", "error");
+            }
+        }
+
+        // Update the modifyOrder function
+        function modifyOrder() {
+            try {
+                // Reload the page to show the cart view
+                window.location.reload();
+            } catch (error) {
+                console.error("Error modifying order:", error);
+                showToast("Failed to modify order", "error");
+            }
+        }
+
+        // Update the confirmOrder function to submit to Airtable
+        async function confirmOrder() {
+            try {
+                const cart = JSON.parse(localStorage.getItem("cart")) || [];
+                const customerId = localStorage.getItem("customerId");
+                
+                // Debug logs
+                console.log("Starting order confirmation with:", {
+                    cart,
+                    customerId,
+                    apiUrl: window.AIRTABLE_URL,
+                    baseId: window.BASE_ID,
+                    hasApiKey: !!window.API_KEY
+                });
+                
+                if (!customerId) {
+                    throw new Error("Customer ID not found");
+                }
+                
+                if (cart.length === 0) {
+                    throw new Error("Cart is empty");
+                }
+
+                // Show loading state
+                const confirmBtn = document.querySelector('button[onclick="confirmOrder()"]');
+                confirmBtn.disabled = true;
+                confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Processing...';
+
+                // Calculate total amount
+                const totalAmount = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+
+                // Generate Order ID
+                const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+                // Format current date and time for Airtable
+                const now = new Date();
+                const orderDateTime = now.toISOString(); // Format: YYYY-MM-DDTHH:mm:ss.sssZ
+
+                // Format products ordered as a string
+                const productsOrdered = cart.map(item => 
+                    `Product: ${item.name}, Quantity: ${item.quantity}, Price: SGD ${item.price}`
+                ).join('\n');
+
+                // Prepare order data according to your table structure
+                const orderData = {
+                    records: [{
+                        fields: {
+                            "Customer ID": customerId,
+                            "Products Ordered": productsOrdered,
+                            "Total Price": parseFloat(totalAmount.toFixed(2)),
+                            "Order Date": orderDateTime, // This will include both date and time
+                            "Order ID": orderId
+                        }
+                    }]
+                };
+
+                console.log("Submitting order data:", orderData); // Debug log
+
+                // Submit order to Airtable
+                const response = await fetch(`${window.AIRTABLE_URL}/${window.BASE_ID}/Orders`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${window.API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(orderData)
+                });
+
+                const responseData = await response.json();
+                console.log("Airtable response:", responseData); // Debug log
+
+                if (!response.ok) {
+                    throw new Error(`Airtable error: ${responseData.error?.message || 'Unknown error'}`);
+                }
+
+                // Show success message with order ID
+                showToast(`Order ${orderId} confirmed! Thank you for your purchase.`);
+                
+                // Clear the cart
+                localStorage.removeItem("cart");
+                
+                // Reset button state
+                confirmBtn.disabled = false;
+                confirmBtn.innerHTML = '<i class="fas fa-check me-2"></i>Confirm Order';
+
+                // Store order ID in localStorage for reference
+                localStorage.setItem('lastOrderId', orderId);
+
+                // Redirect to order history
+                setTimeout(() => {
+                    window.location.href = "order-history.html";
+                }, 2000);
+
+            } catch (error) {
+                console.error("Order confirmation error details:", error);
+                showToast(`Failed to confirm order: ${error.message}`);
+                
+                // Reset button state on error
+                const confirmBtn = document.querySelector('button[onclick="confirmOrder()"]');
+                if (confirmBtn) {
+                    confirmBtn.disabled = false;
+                    confirmBtn.innerHTML = '<i class="fas fa-check me-2"></i>Confirm Order';
+                }
+            }
+        }
+
+        // Helper function to format currency
+        function formatCurrency(amount) {
+            return `SGD ${parseFloat(amount).toFixed(2)}`;
+        }
+
+        // Update the showToast function
+        function showToast(message, type = "success") {
+            // Remove existing toasts
+            const existingToast = document.querySelector('.custom-toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `custom-toast ${type}`;
+            toast.innerHTML = `
+                <i class="fas ${type === 'success' ? 'fa-check-circle text-success' : 'fa-exclamation-circle text-danger'}"></i>
+                <span>${message}</span>
+            `;
+
+            // Add toast to document
+            document.body.appendChild(toast);
+
+            // Trigger animation
+            setTimeout(() => toast.classList.add('show'), 10);
+
+            // Remove toast after delay
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Make functions globally available
+        window.confirmOrder = confirmOrder;
+        window.showToast = showToast;
     </script>
 </body>
 </html> 
