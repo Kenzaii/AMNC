@@ -303,6 +303,93 @@
         .custom-toast.error {
             border-left: 4px solid #dc3545;
         }
+
+            .chat-bubble-container {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+    }
+
+    .chat-bubble {
+        width: 60px;
+        height: 60px;
+        background-color: #685FFF;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        transition: transform 0.3s ease;
+    }
+
+    .chat-bubble:hover {
+        transform: scale(1.1);
+    }
+
+    .chat-bubble i {
+        color: white;
+        font-size: 24px;
+    }
+
+    .chat-frame-container {
+        position: fixed;
+        bottom: 90px;
+        right: 20px;
+        width: 380px;
+        height: 600px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        display: none;
+        overflow: hidden;
+    }
+
+    .chat-frame-container.active {
+        display: block;
+    }
+
+    .chat-frame-container iframe {
+        width: 100%;
+        height: calc(100% - 40px);
+        border: none;
+    }
+
+    .chat-header {
+        height: 40px;
+        background: #685FFF;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 15px;
+        font-size: 16px;
+    }
+
+    .close-chat {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 0;
+        line-height: 1;
+    }
+
+    .close-chat:hover {
+        opacity: 0.8;
+    }
+
+    @media (max-width: 480px) {
+        .chat-frame-container {
+            width: 100%;
+            height: 100%;
+            bottom: 0;
+            right: 0;
+            border-radius: 0;
+        }
+    }
     </style>
 </head>
 <body>
@@ -939,5 +1026,43 @@
         window.confirmOrder = confirmOrder;
         window.showToast = showToast;
     </script>
+
+        <div id="chat-container" class="chat-bubble-container">
+        <div id="chat-bubble" class="chat-bubble">
+            <i class="fas fa-comments"></i>
+        </div>
+        <div id="chat-frame-container" class="chat-frame-container">
+            <div class="chat-header">
+                <span>Chat Support</span>
+                <button id="close-chat" class="close-chat">×</button>
+            </div>
+            <iframe 
+                src="https://app.relevanceai.com/agents/f1db6c/f099903e0711-4d99-8a1c-6c65b95a8189/772c3d36-ddc1-4f56-8383-4e023aedf1ef/embed-chat?hide_tool_steps=false&hide_file_uploads=false&hide_conversation_list=false&bubble_style=agent&primary_color=%23685FFF&bubble_icon=pd%2Fchat&input_placeholder_text=Type+your+message...&hide_logo=false" 
+                frameborder="0"
+            ></iframe>
+        </div>
+    </div>
+    
+    <!-- Add Font Awesome for the chat icon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatBubble = document.getElementById('chat-bubble');
+            const chatFrameContainer = document.getElementById('chat-frame-container');
+            const closeChat = document.getElementById('close-chat');
+    
+            chatBubble.addEventListener('click', function() {
+                chatFrameContainer.classList.add('active');
+                chatBubble.style.display = 'none';
+            });
+    
+            closeChat.addEventListener('click', function() {
+                chatFrameContainer.classList.remove('active');
+                chatBubble.style.display = 'flex';
+            });
+        });
+    </script>
+    
    </body>
 </html> 
