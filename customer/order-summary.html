@@ -4,230 +4,198 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Order Summary</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .order-summary-card {
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            border-radius: 8px;
-            border: none;
-        }
-
-        .summary-header {
-            background: linear-gradient(135deg, #007bff, #0056b3);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 8px 8px 0 0;
-        }
-
-        .summary-item {
-            padding: 1rem;
-            border-bottom: 1px solid #eee;
-        }
-
-        .summary-item:last-child {
-            border-bottom: none;
-        }
-
-        .item-name {
-            font-weight: 500;
-            color: #333;
-        }
-
-        .item-price {
-            color: #28a745;
-            font-weight: 500;
-        }
-
-        .summary-total {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-top: 2px solid #dee2e6;
-            font-weight: 600;
-            font-size: 1.1rem;
-        }
-
-        .action-buttons {
-            padding: 1.5rem;
-            background: #fff;
-            border-radius: 0 0 8px 8px;
-        }
-
-        .btn-modify {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-confirm {
-            background: linear-gradient(135deg, #28a745, #218838);
-            color: white;
-        }
-
-        .btn-confirm:hover {
-            background: linear-gradient(135deg, #218838, #1e7e34);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(40, 167, 69, 0.2);
-        }
-    </style>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="dashboard.html">Customer Dashboard</a>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
     <div class="container mt-5">
-        <div class="row justify-content-center">
-            <div class="col-md-8">
-                <div class="order-summary-card card">
-                    <div class="summary-header">
-                        <h4 class="mb-0">
-                            <i class="fas fa-clipboard-check me-2"></i>
-                            Order Summary
-                        </h4>
-                    </div>
-                    <div id="orderItems">
-                        <!-- Order items will be loaded here -->
-                    </div>
-                    <div class="summary-total d-flex justify-content-between">
-                        <span>Total Amount:</span>
-                        <span id="orderTotal">SGD 0.00</span>
-                    </div>
-                    <div class="action-buttons d-flex gap-3">
-                        <button class="btn btn-modify flex-grow-1" onclick="window.location.href='dashboard.html'">
-                            <i class="fas fa-edit me-2"></i>
-                            Modify Order
-                        </button>
-                        <button class="btn btn-confirm flex-grow-1" onclick="confirmOrder()">
-                            <i class="fas fa-check me-2"></i>
-                            Confirm Order
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <h2>Order Summary</h2>
+        <div id="orderItems">
+            <!-- Items will be inserted here -->
+        </div>
+        <div class="total-section mt-3">
+            <strong>Total: </strong>
+            <span id="orderTotal">SGD 0.00</span>
+        </div>
+        <div class="mt-3">
+            <button class="btn btn-secondary" onclick="window.history.back()">Back to Cart</button>
+            <button class="btn btn-primary" onclick="confirmOrder()">Confirm Order</button>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // Test if page is loading
+        console.log('Order summary page loaded');
+        
+        // Check cart contents immediately
+        const cart = JSON.parse(localStorage.getItem('cart') || sessionStorage.getItem('checkoutCart') || '[]');
+        console.log('Retrieved cart for order summary:', cart);
+
         // Airtable Configuration
         const AIRTABLE_URL = 'https://api.airtable.com/v0';
         const BASE_ID = 'appipp8LFUGElp3Di';
         const API_KEY = 'pathhm43xpa5TmwaG.3b6a259e92f40f97170ba1680a4db0af5c767076db223aef553ae844cf94e542';
 
-        // Load order details from localStorage
-        document.addEventListener('DOMContentLoaded', function() {
-            const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', async function() {
+            alert('Page loaded - Starting checkout process');
+            
+            // Get cart data
+            const cartData = localStorage.getItem('cart');
+            alert('Raw cart data: ' + cartData);
+            
+            try {
+                const cart = JSON.parse(cartData || '[]');
+                alert('Parsed cart contents: ' + JSON.stringify(cart, null, 2));
+                
+                if (cart.length > 0) {
+                    // Check first item
+                    const firstItem = cart[0];
+                    alert(`First item details:
+                        Product ID: ${firstItem.productId}
+                        Name: ${firstItem.name}
+                        Quantity: ${firstItem.quantity}
+                    `);
+                    
+                    // Start trade deal check
+                    await checkTradeDeals(cart);
+                } else {
+                    alert('Cart is empty!');
+                }
+            } catch (error) {
+                alert('Error processing cart: ' + error.message);
+            }
+        });
+
+        // Display order summary
+        function displayOrderSummary(cart) {
             const orderItems = document.getElementById('orderItems');
             const orderTotal = document.getElementById('orderTotal');
             let total = 0;
 
-            if (cart.length === 0) {
-                window.location.href = 'dashboard.html';
-                return;
-            }
-
-            // Display order items
-            orderItems.innerHTML = cart.map(item => {
+            const itemsHtml = cart.map(item => {
                 const itemTotal = item.price * item.quantity;
                 total += itemTotal;
                 return `
-                    <div class="summary-item">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <div class="item-name">${item.productName}</div>
-                                <div class="text-muted">Quantity: ${item.quantity}</div>
-                            </div>
-                            <div class="item-price">SGD ${itemTotal.toFixed(2)}</div>
+                    <div class="card mb-2">
+                        <div class="card-body">
+                            <h5 class="card-title">${item.productName}</h5>
+                            <p class="card-text">
+                                Quantity: ${item.quantity}
+                                ${item.focQuantity ? `<span class="text-success"> + ${item.focQuantity} FREE!</span>` : ''}
+                            </p>
+                            <p class="card-text">Price: SGD ${item.price.toFixed(2)}</p>
+                            <p class="card-text">Total: SGD ${itemTotal.toFixed(2)}</p>
                         </div>
                     </div>
                 `;
             }).join('');
 
-            // Update total
+            orderItems.innerHTML = itemsHtml;
             orderTotal.textContent = `SGD ${total.toFixed(2)}`;
-        });
+        }
 
-        // Function to confirm order
-        async function confirmOrder() {
+        // Your existing checkTradeDeals function here
+        async function checkTradeDeals(cart) {
+            alert('Starting trade deals check');
+            
             try {
-                const cart = JSON.parse(localStorage.getItem('cart') || '[]');
-                if (cart.length === 0) {
-                    alert('Your cart is empty');
-                    return;
-                }
-
-                const customerId = localStorage.getItem('customerId');
-                if (!customerId) {
-                    throw new Error('Customer ID not found. Please log in again.');
-                }
-
-                const orderItems = cart.map(item => 
-                    `${item.productName} (Quantity: ${item.quantity})`
-                ).join('\n');
-                const totalAmount = cart.reduce((sum, item) => 
-                    sum + (item.price * item.quantity), 0
-                );
-
-                // Generate Order ID (timestamp + random string)
-                const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                
-                // Get current date in ISO format
-                const orderDate = new Date().toISOString().split('T')[0];
-
-                console.log('Sending order:', {
-                    customerId,
-                    orderItems,
-                    totalAmount,
-                    orderId,
-                    orderDate,
-                    url: `${AIRTABLE_URL}/${BASE_ID}/Orders`
-                });
-
-                const response = await fetch(`${AIRTABLE_URL}/${BASE_ID}/Orders`, {
-                    method: 'POST',
+                // Fetch trade deals
+                alert('Fetching trade deals from Airtable...');
+                const response = await fetch(`${AIRTABLE_URL}/${BASE_ID}/TradeDeal`, {
                     headers: {
-                        'Authorization': `Bearer ${API_KEY}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        fields: {
-                            'Customer ID': customerId,
-                            'Products Ordered': orderItems,
-                            'Total Price': totalAmount,
-                            'Order Date': orderDate,
-                            'Order ID': orderId
-                        }
-                    })
-                });
-
-                const responseData = await response.json();
-                console.log('Airtable response:', responseData);
-
-                if (!response.ok) {
-                    throw new Error(`Failed to create order: ${responseData.error?.message || response.statusText}`);
-                }
-
-                // Clear cart and redirect to success page
-                localStorage.setItem('cart', JSON.stringify([]));
-                alert('Order placed successfully!');
-                window.location.href = 'dashboard.html';
-
-            } catch (error) {
-                console.error('Checkout error:', {
-                    message: error.message,
-                    stack: error.stack,
-                    localStorage: {
-                        customerId: localStorage.getItem('customerId'),
-                        username: localStorage.getItem('username'),
-                        cartItems: localStorage.getItem('cart')
+                        'Authorization': `Bearer ${API_KEY}`
                     }
                 });
-                alert('Failed to place order: ' + error.message);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                alert(`Found ${data.records.length} trade deals`);
+                
+                // Log each trade deal
+                data.records.forEach(deal => {
+                    alert(`Trade Deal:
+                        Name: ${deal.fields.Name}
+                        Required Qty: ${deal.fields.QuantityReq}
+                        FOC: ${deal.fields.FOC}
+                    `);
+                });
+
+                // Check each cart item
+                for (let item of cart) {
+                    alert(`Checking item: ${item.name}`);
+                    
+                    // Find matching deal
+                    const matchingDeal = data.records.find(deal => {
+                        const dealName = deal.fields.Name.toLowerCase();
+                        const itemName = (item.name || '').toLowerCase();
+                        const isMatch = itemName.includes(dealName);
+                        alert(`Comparing:
+                            Deal name: ${dealName}
+                            Item name: ${itemName}
+                            Match found: ${isMatch}
+                        `);
+                        return isMatch;
+                    });
+
+                    if (matchingDeal) {
+                        alert('Found matching deal!');
+                        const requiredQty = matchingDeal.fields.QuantityReq;
+                        const focQty = matchingDeal.fields.FOC;
+                        const currentQty = item.quantity || 1;
+
+                        alert(`Quantities:
+                            Current: ${currentQty}
+                            Required: ${requiredQty}
+                            FOC: ${focQty}
+                        `);
+
+                        if (currentQty < requiredQty) {
+                            const additionalQtyNeeded = requiredQty - currentQty;
+                            const wantsDeal = confirm(`
+                                Trade Deal Available!
+                                
+                                Product: ${item.name}
+                                Current Quantity: ${currentQty}
+                                Buy ${requiredQty} get ${focQty} FREE!
+                                
+                                Add ${additionalQtyNeeded} more to qualify for this deal!
+                                
+                                Would you like to update your quantity?
+                            `);
+                            
+                            if (wantsDeal) {
+                                item.quantity = requiredQty;
+                                item.focQuantity = focQty;
+                                localStorage.setItem('cart', JSON.stringify(cart));
+                                alert(`Updated! You'll receive ${focQty} free items!`);
+                                location.reload();
+                                return;
+                            }
+                        } else {
+                            alert(`Already qualifies! You'll get ${focQty} free!`);
+                            item.focQuantity = focQty;
+                            localStorage.setItem('cart', JSON.stringify(cart));
+                        }
+                    } else {
+                        alert(`No matching deal found for ${item.name}`);
+                    }
+                }
+            } catch (error) {
+                alert('Error checking trade deals: ' + error.message);
+                console.error('Error:', error);
             }
+        }
+
+        function confirmOrder() {
+            // Add your order confirmation logic here
+            alert('Order confirmed!');
+            // Clear cart and redirect
+            localStorage.removeItem('cart');
+            window.location.href = 'dashboard.html';
         }
     </script>
 </body>

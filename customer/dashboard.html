@@ -638,6 +638,10 @@
         // Function to load and display products
         async function loadProducts() {
             try {
+                // Get current customer ID from localStorage
+                const currentCustomerId = localStorage.getItem('customerId');
+                console.log('Current customer ID:', currentCustomerId, typeof currentCustomerId);
+
                 const response = await fetch(`${window.AIRTABLE_URL}/${window.BASE_ID}/Products`, {
                     headers: {
                         'Authorization': `Bearer ${window.API_KEY}`
@@ -647,29 +651,96 @@
                 if (!response.ok) throw new Error('Failed to fetch products');
                 
                 const data = await response.json();
+                console.log('All products:', data.records.map(p => ({
+                    name: p.fields.Name,
+                    customerID: p.fields.CustomerID,
+                    specialPrice: p.fields.SpecialPrice
+                })));
+                
                 const productsContainer = document.getElementById('productsContainer');
                 
-                productsContainer.innerHTML = data.records.map(product => `
-                    <div class="product-card card">
-                        <div class="image-container">
-                            ${product.fields.ImageURL 
-                                ? `<img src="${product.fields.ImageURL}" 
-                                     class="card-img-top" 
-                                     alt="${product.fields.Name}"
-                                     onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'no-image\'><i class=\'fas fa-image\'></i></div>';">`
-                                : `<div class="no-image"><i class="fas fa-image"></i></div>`
-                            }
+                productsContainer.innerHTML = data.records.map(product => {
+                    // Detailed logging for each product's customer ID
+                    const productCustomerId = product.fields.CustomerID;
+                    console.log('Product details:', {
+                        productName: product.fields.Name,
+                        productCustomerId: productCustomerId,
+                        productCustomerIdType: typeof productCustomerId,
+                        currentCustomerId: currentCustomerId,
+                        currentCustomerIdType: typeof currentCustomerId,
+                        hasCustomerId: Boolean(productCustomerId),
+                        hasSpecialPrice: Boolean(product.fields.SpecialPrice),
+                        isArray: Array.isArray(productCustomerId)
+                    });
+
+                    // Check if this product has a special price for the current customer
+                    let customerMatch = false;
+                    if (productCustomerId && currentCustomerId) {
+                        if (Array.isArray(productCustomerId)) {
+                            // If CustomerID is an array, check if currentCustomerId is in it
+                            customerMatch = productCustomerId.some(id => String(id).trim() === String(currentCustomerId).trim());
+                        } else {
+                            // If CustomerID is a single value, do direct comparison
+                            customerMatch = String(productCustomerId).trim() === String(currentCustomerId).trim();
+                        }
+                    }
+
+                    const hasSpecialPrice = customerMatch && 
+                        product.fields.SpecialPrice !== undefined && 
+                        product.fields.SpecialPrice !== null;
+                    
+                    console.log('Customer match check:', {
+                        productName: product.fields.Name,
+                        customerMatch: customerMatch,
+                        hasSpecialPrice: hasSpecialPrice
+                    });
+
+                    // Determine which price to display
+                    let displayPrice;
+                    if (hasSpecialPrice) {
+                        displayPrice = Number(product.fields.SpecialPrice);
+                        console.log(`Using special price for ${product.fields.Name}:`, displayPrice);
+                    } else {
+                        displayPrice = Number(product.fields.Price);
+                        console.log(`Using regular price for ${product.fields.Name}:`, displayPrice);
+                    }
+
+                    console.log('Final price calculation:', {
+                        productName: product.fields.Name,
+                        hasSpecialPrice: hasSpecialPrice,
+                        specialPrice: product.fields.SpecialPrice,
+                        basePrice: product.fields.Price,
+                        finalPrice: displayPrice,
+                        customerMatch: customerMatch
+                    });
+
+                    return `
+                        <div class="product-card card">
+                            <div class="image-container">
+                                ${product.fields.ImageURL 
+                                    ? `<img src="${product.fields.ImageURL}" 
+                                         class="card-img-top" 
+                                         alt="${product.fields.Name}"
+                                         onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'no-image\'><i class=\'fas fa-image\'></i></div>';">`
+                                    : `<div class="no-image"><i class="fas fa-image"></i></div>`
+                                }
+                            </div>
+                            <div class="card-body">
+                                <h5 class="card-title">${product.fields.Name}</h5>
+                                <p class="card-text product-price">
+                                    SGD ${displayPrice.toFixed(2)}
+                                    ${hasSpecialPrice ? 
+                                        `<span class="badge bg-success ms-2">Special Price</span>` : 
+                                        ''}
+                                </p>
+                                <button onclick="addToCart('${product.id}', '${product.fields.Name}', ${displayPrice})" 
+                                        class="btn btn-primary btn-sm w-100">
+                                    <i class="fas fa-cart-plus"></i> Add to Cart
+                                </button>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <h5 class="card-title">${product.fields.Name}</h5>
-                            <p class="card-text product-price">SGD ${product.fields.Price}</p>
-                            <button onclick="addToCart('${product.id}', '${product.fields.Name}', ${product.fields.Price})" 
-                                    class="btn btn-primary btn-sm w-100">
-                                <i class="fas fa-cart-plus"></i> Add to Cart
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
                 
             } catch (error) {
                 console.error('Error loading products:', error);
@@ -1102,5 +1173,9 @@
         });
     </script>
     
-   </body>
+    <!-- Add or update the chatbot container -->
+    <div id="chatbotContainer" style="width: 100%; height: 600px;">
+        <!-- Chatbot will be loaded here -->
+    </div>
+</body>
 </html> 
