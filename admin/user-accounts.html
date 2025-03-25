@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Accounts - Admin Portal</title>
+    <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Admin Portal</h2>
+        <ul class="sidebar-menu">
+            <li class="active"><a href="user-accounts.html">User Accounts</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li><a href="order-history.html">Order History</a></li>
+        </ul>
+    </div>
+    
+    <div class="main-content">
+        <div class="header">
+            <h1>User Accounts</h1>
+            <div class="user-info">
+                <span class="username" id="current-user"></span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2>Users</h2>
+                <button class="btn btn-primary btn-sm" id="add-user-btn">Add New User</button>
+            </div>
+            <div class="form-inline" style="margin-bottom: 20px;">
+                <input type="text" id="search-user" class="form-control" placeholder="Search users...">
+                <select id="filter-role" class="form-control">
+                    <option value="">All Roles</option>
+                    <option value="admin">Admin</option>
+                    <option value="user">User</option>
+                    <option value="sub-admin">Sub-Admin</option>
+                    <option value="guest">Guest</option>
+                </select>
+                <select id="filter-status" class="form-control">
+                    <option value="">All Status</option>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                </select>
+                <select id="filter-payment" class="form-control">
+                    <option value="">All Payment</option>
+                    <option value="Yes">Paid</option>
+                    <option value="No">Unpaid</option>
+                </select>
+            </div>
+            <div class="table-responsive">
+                <table class="table" id="users-table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Customer Name</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Last Login</th>
+                            <th>Payment</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- User data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="pagination" class="text-center" style="margin-top: 20px;">
+                <!-- Pagination controls will be added here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Form Modal -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title">Add New User</h2>
+            <form id="user-form">
+                <input type="hidden" id="user-id">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="role">Role</label>
+                    <select id="role" required>
+                        <option value="admin">Admin</option>
+                        <option value="user">User</option>
+                        <option value="sub-admin">Sub-Admin</option>
+                        <option value="guest">Guest</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="customer-name">Customer Name</label>
+                    <input type="text" id="customer-name">
+                </div>
+                <div class="form-group">
+                    <label for="customer-id">BP Code</label>
+                    <input type="text" id="customer-id">
+                </div>
+                <div class="form-group">
+                    <label for="status">Status</label>
+                    <select id="status" required>
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="outlet-name">Outlet Name</label>
+                    <input type="text" id="outlet-name">
+                </div>
+                <div class="form-group">
+                    <label for="address">Address</label>
+                    <input type="text" id="address">
+                </div>
+                <div class="form-group">
+                    <label for="contact-info">Contact Info</label>
+                    <textarea id="contact-info" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="payment-terms">Payment Terms</label>
+                    <select id="payment-terms">
+                        <option value="COD">COD</option>
+                        <option value="30 Days">30 Days</option>
+                        <option value="60 Days">60 Days</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="contracted">Contracted</label>
+                    <select id="contracted">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="contract-volume">Contract Volume</label>
+                    <input type="text" id="contract-volume">
+                </div>
+                <div class="form-group">
+                    <label for="paid">Paid</label>
+                    <select id="paid">
+                        <option value="Yes">Yes</option>
+                        <option value="No">No</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary">Save User</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Floating chatbot -->
+    <div id="chatbot-container" class="chatbot-container">
+        <div id="chatbot-icon" class="chatbot-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="white"/>
+            </svg>
+        </div>
+        <div id="chatbot-frame" class="chatbot-frame">
+            <iframe src="https://app.relevanceai.com/agents/f1db6c/f099903e0711-4d99-8a1c-6c65b95a8189/772c3d36-ddc1-4f56-8383-4e023aedf1ef/embed-chat?hide_tool_steps=false&hide_file_uploads=false&hide_conversation_list=false&bubble_style=agent&primary_color=%23685FFF&bubble_icon=pd%2Fchat&input_placeholder_text=Type+your+message...&hide_logo=false" 
+                   width="100%" height="100%" frameborder="0"></iframe>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../js/config.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/admin/user-accounts.js"></script>
+    
+    <script>
+        // Chatbot toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatbotIcon = document.getElementById('chatbot-icon');
+            const chatbotFrame = document.getElementById('chatbot-frame');
+            
+            // Make sure elements exist before adding event listeners
+            if (chatbotIcon && chatbotFrame) {
+                chatbotIcon.addEventListener('click', function() {
+                    if (chatbotFrame.classList.contains('open')) {
+                        chatbotFrame.classList.remove('open');
+                    } else {
+                        chatbotFrame.classList.add('open');
+                    }
+                });
+                
+                // Ensure chatbot icon is visible
+                chatbotIcon.style.display = 'flex';
+                
+                // Log to console for debugging
+                console.log('Chatbot initialized');
+            } else {
+                console.error('Chatbot elements not found');
+            }
+        });
+    </script>
+</body>
+</html> 

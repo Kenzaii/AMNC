@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order History - Admin Portal</title>
+    <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Admin Portal</h2>
+        <ul class="sidebar-menu">
+            <li><a href="user-accounts.html">User Accounts</a></li>
+            <li><a href="products.html">Products</a></li>
+            <li class="active"><a href="order-history.html">Order History</a></li>
+        </ul>
+    </div>
+    
+    <div class="main-content">
+        <div class="header">
+            <h1>Order History</h1>
+            <div class="user-info">
+                <span class="username" id="current-user"></span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2>All Orders</h2>
+                <div class="download-options">
+                    <button id="download-options-btn" class="btn btn-sm">Download Options ▼</button>
+                    <div id="download-dropdown" class="dropdown-content">
+                        <a href="#" id="download-csv">Download as CSV</a>
+                        <a href="#" id="download-json">Download as JSON</a>
+                        <a href="#" id="download-pdf">Download as PDF</a>
+                    </div>
+                </div>
+            </div>
+            <div class="form-inline" style="margin-bottom: 20px;">
+                <input type="text" id="search-order" class="form-control" placeholder="Search by Order ID or Customer ID...">
+                <input type="date" id="date-from" class="form-control" placeholder="From Date">
+                <input type="date" id="date-to" class="form-control" placeholder="To Date">
+                <button id="filter-btn" class="btn btn-primary btn-sm">Apply Filters</button>
+            </div>
+            <div class="quick-filters">
+                <span>Quick Filter:</span>
+                <button id="filter-today" class="btn btn-sm">Today</button>
+                <button id="filter-this-month" class="btn btn-sm">This Month</button>
+                <button id="filter-all" class="btn btn-sm btn-primary">All</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table" id="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Order ID</th>
+                            <th>Customer ID</th>
+                            <th>Order Date</th>
+                            <th>Total Price</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Order data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="pagination" class="pagination-container">
+                <!-- Pagination controls will be added here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Order Details Modal -->
+    <div id="order-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Order Details</h2>
+            <div id="order-info">
+                <div class="order-header">
+                    <div>
+                        <strong>Order ID:</strong> <span id="order-id"></span>
+                    </div>
+                    <div>
+                        <strong>Customer ID:</strong> <span id="order-customer"></span>
+                    </div>
+                    <div>
+                        <strong>Order Date:</strong> <span id="order-date"></span>
+                    </div>
+                    <div>
+                        <strong>Timestamp:</strong> <span id="order-timestamp"></span>
+                    </div>
+                </div>
+                
+                <h3>Products Ordered</h3>
+                <div id="products-ordered" class="products-ordered">
+                    <!-- Product details will be shown here -->
+                </div>
+                
+                <div class="order-total-section">
+                    <div class="total-price">
+                        <strong>Total Price:</strong> <span id="order-total"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Download Options Modal -->
+    <div id="download-options-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Select Download Options</h2>
+            <div class="download-selection">
+                <div class="selection-section">
+                    <h3>Customer Filter</h3>
+                    <div class="customer-filter">
+                        <div class="form-group">
+                            <label for="customer-name-filter">Customer Name:</label>
+                            <input type="text" id="customer-name-filter" class="form-control" placeholder="Filter by customer name">
+                        </div>
+                        <div class="form-group">
+                            <label for="bp-code-filter">BP Code:</label>
+                            <input type="text" id="bp-code-filter" class="form-control" placeholder="Filter by BP code">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="selection-section">
+                    <h3>Date Range</h3>
+                    <div class="date-selection">
+                        <div class="form-group">
+                            <label for="download-date-from">From:</label>
+                            <input type="date" id="download-date-from" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="download-date-to">To:</label>
+                            <input type="date" id="download-date-to" class="form-control">
+                        </div>
+                    </div>
+                    <div class="radio-group">
+                        <label class="radio-container">
+                            <input type="radio" name="date-option" id="date-option-all" checked>
+                            <span class="radio-label">All Dates</span>
+                        </label>
+                        <label class="radio-container">
+                            <input type="radio" name="date-option" id="date-option-custom">
+                            <span class="radio-label">Custom Date Range</span>
+                        </label>
+                        <label class="radio-container">
+                            <input type="radio" name="date-option" id="date-option-current">
+                            <span class="radio-label">Use Current Filters</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="selection-section">
+                    <h3>File Format</h3>
+                    <div class="radio-group">
+                        <label class="radio-container">
+                            <input type="radio" name="format-option" id="format-option-csv" checked>
+                            <span class="radio-label">CSV</span>
+                        </label>
+                        <label class="radio-container">
+                            <input type="radio" name="format-option" id="format-option-json">
+                            <span class="radio-label">JSON</span>
+                        </label>
+                        <label class="radio-container">
+                            <input type="radio" name="format-option" id="format-option-pdf">
+                            <span class="radio-label">PDF</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="download-actions">
+                    <button id="cancel-download" class="btn btn-cancel">Cancel</button>
+                    <button id="start-download" class="btn btn-primary">Download</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Floating chatbot -->
+    <div id="chatbot-container" class="chatbot-container">
+        <div id="chatbot-icon" class="chatbot-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="white"/>
+            </svg>
+        </div>
+        <div id="chatbot-frame" class="chatbot-frame">
+            <iframe src="https://app.relevanceai.com/agents/f1db6c/f099903e0711-4d99-8a1c-6c65b95a8189/772c3d36-ddc1-4f56-8383-4e023aedf1ef/embed-chat?hide_tool_steps=false&hide_file_uploads=false&hide_conversation_list=false&bubble_style=agent&primary_color=%23685FFF&bubble_icon=pd%2Fchat&input_placeholder_text=Type+your+message...&hide_logo=false" 
+                   width="100%" height="100%" frameborder="0"></iframe>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../js/config.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/admin/order-history.js"></script>
+    
+    <script>
+        // Chatbot toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatbotIcon = document.getElementById('chatbot-icon');
+            const chatbotFrame = document.getElementById('chatbot-frame');
+            
+            // Make sure elements exist before adding event listeners
+            if (chatbotIcon && chatbotFrame) {
+                chatbotIcon.addEventListener('click', function() {
+                    if (chatbotFrame.classList.contains('open')) {
+                        chatbotFrame.classList.remove('open');
+                    } else {
+                        chatbotFrame.classList.add('open');
+                    }
+                });
+                
+                // Ensure chatbot icon is visible
+                chatbotIcon.style.display = 'flex';
+                
+                // Log to console for debugging
+                console.log('Chatbot initialized');
+            } else {
+                console.error('Chatbot elements not found');
+            }
+        });
+    </script>
+</body>
+</html> 

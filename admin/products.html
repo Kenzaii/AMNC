@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products - Admin Portal</title>
+    <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Admin Portal</h2>
+        <ul class="sidebar-menu">
+            <li><a href="user-accounts.html">User Accounts</a></li>
+            <li class="active"><a href="products.html">Products</a></li>
+            <li><a href="order-history.html">Order History</a></li>
+        </ul>
+    </div>
+    
+    <div class="main-content">
+        <div class="header">
+            <h1>Products</h1>
+            <div class="user-info">
+                <span class="username" id="current-user"></span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h2>Product Management</h2>
+                <button class="btn btn-primary btn-sm" id="add-product-btn">Add New Product</button>
+            </div>
+            <div class="form-inline" style="margin-bottom: 20px;">
+                <input type="text" id="search-product" class="form-control" placeholder="Search products...">
+            </div>
+            <div class="table-responsive">
+                <table class="table" id="products-table">
+                    <thead>
+                        <tr>
+                            <th>Product Image</th>
+                            <th>Name</th>
+                            <th>Price</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Product data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="pagination" class="pagination-container">
+                <!-- Pagination controls will be added here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Product Form Modal -->
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title">Add New Product</h2>
+            <form id="product-form">
+                <input type="hidden" id="product-id">
+                <div class="form-group">
+                    <label for="product-name">Product Name</label>
+                    <input type="text" id="product-name" required>
+                </div>
+                <div class="form-group">
+                    <label for="product-description">Description</label>
+                    <textarea id="product-description" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="product-price">Price</label>
+                    <input type="number" id="product-price" step="0.01" min="0" required>
+                </div>
+                <div class="form-group">
+                    <label for="product-special-price">Special Price</label>
+                    <input type="number" id="product-special-price" step="0.01" min="0">
+                    <small class="form-text">Leave empty if no special price</small>
+                </div>
+                <div class="form-group">
+                    <label for="product-bp-code">Customer BP Codes</label>
+                    <div class="bp-code-container">
+                        <div class="bp-code-input-group">
+                            <input type="text" class="bp-code-input" placeholder="Enter customer BP Code">
+                            <button type="button" class="btn-add-bp-code">+</button>
+                        </div>
+                        <div id="bp-codes-list" class="bp-codes-list"></div>
+                    </div>
+                    <small class="form-text">Assign this product to specific customers (comma-separated)</small>
+                </div>
+                <div class="form-group">
+                    <label for="product-image">Image URL</label>
+                    <input type="text" id="product-image">
+                    <div id="image-preview-container" class="image-preview-container"></div>
+                </div>
+                <button type="submit" class="btn btn-primary">Save Product</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-confirm-modal" class="confirm-modal">
+        <div class="confirm-modal-content">
+            <h3>Delete Product</h3>
+            <p>Are you sure you want to delete this product? This action cannot be undone.</p>
+            <div class="confirm-modal-actions">
+                <button class="btn btn-cancel" id="cancel-delete-btn">Cancel</button>
+                <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Floating chatbot -->
+    <div id="chatbot-container" class="chatbot-container">
+        <div id="chatbot-icon" class="chatbot-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="white"/>
+            </svg>
+        </div>
+        <div id="chatbot-frame" class="chatbot-frame">
+            <iframe src="https://app.relevanceai.com/agents/f1db6c/f099903e0711-4d99-8a1c-6c65b95a8189/772c3d36-ddc1-4f56-8383-4e023aedf1ef/embed-chat?hide_tool_steps=false&hide_file_uploads=false&hide_conversation_list=false&bubble_style=agent&primary_color=%23685FFF&bubble_icon=pd%2Fchat&input_placeholder_text=Type+your+message...&hide_logo=false" 
+                   width="100%" height="100%" frameborder="0"></iframe>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../js/config.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/admin/products.js"></script>
+    
+    <script>
+        // Chatbot toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatbotIcon = document.getElementById('chatbot-icon');
+            const chatbotFrame = document.getElementById('chatbot-frame');
+            
+            // Make sure elements exist before adding event listeners
+            if (chatbotIcon && chatbotFrame) {
+                chatbotIcon.addEventListener('click', function() {
+                    if (chatbotFrame.classList.contains('open')) {
+                        chatbotFrame.classList.remove('open');
+                    } else {
+                        chatbotFrame.classList.add('open');
+                    }
+                });
+                
+                // Ensure chatbot icon is visible
+                chatbotIcon.style.display = 'flex';
+                
+                // Log to console for debugging
+                console.log('Chatbot initialized');
+            } else {
+                console.error('Chatbot elements not found');
+            }
+        });
+    </script>
+</body>
+</html> 
