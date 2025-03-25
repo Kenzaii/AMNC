@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Products - Customer Portal</title>
+    <link rel="stylesheet" href="../styles/main.css">
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Customer Portal</h2>
+        <ul class="sidebar-menu">
+            <li class="active"><a href="index.html">Order Products</a></li>
+            <li><a href="order-history.html">Order History</a></li>
+        </ul>
+    </div>
+    
+    <div class="main-content">
+        <div class="header">
+            <h1>Order Products</h1>
+            <div class="user-info">
+                <span class="username" id="current-user"></span>
+                <button class="btn btn-sm logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+        
+        <div class="row">
+            <div class="col-70">
+                <div class="card">
+                    <div class="card-header">
+                        <h2>Available Products</h2>
+                        <div class="form-inline">
+                            <input type="text" id="search-product" class="form-control" placeholder="Search products...">
+                        </div>
+                    </div>
+                    <div id="products-container">
+                        <!-- Products will be loaded here -->
+                    </div>
+                    <div id="pagination" class="text-center" style="margin-top: 20px;">
+                        <!-- Pagination controls will be added here -->
+                    </div>
+                </div>
+            </div>
+            <div class="col-30">
+                <div class="card sticky-cart">
+                    <h2>Your Cart</h2>
+                    <div id="cart-items">
+                        <!-- Cart items will be loaded here -->
+                        <div class="empty-cart">Your cart is empty</div>
+                    </div>
+                    <div class="cart-summary">
+                        <div class="subtotal">
+                            <span>Subtotal:</span>
+                            <span id="cart-subtotal">$0.00</span>
+                        </div>
+                        <div class="tax">
+                            <span>Tax (9%):</span>
+                            <span id="cart-tax">$0.00</span>
+                        </div>
+                        <div class="total">
+                            <span>Total:</span>
+                            <span id="cart-total">$0.00</span>
+                        </div>
+                    </div>
+                    <button id="checkout-btn" class="btn btn-primary" disabled>Checkout</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Product Details Modal -->
+    <div id="product-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div class="product-details">
+                <div class="product-image">
+                    <img id="modal-product-image" src="" alt="Product Image">
+                </div>
+                <div class="product-info">
+                    <h2 id="modal-product-name"></h2>
+                    <p id="modal-product-description"></p>
+                    <div class="product-price">
+                        <span id="modal-product-price"></span>
+                        <span class="unit" id="modal-product-unit"></span>
+                    </div>
+                    <div class="product-stock">
+                        <span>In Stock:</span>
+                        <span id="modal-product-stock"></span>
+                    </div>
+                    <div class="product-quantity">
+                        <label for="modal-quantity">Quantity:</label>
+                        <div class="quantity-control">
+                            <button id="decrease-quantity">-</button>
+                            <input type="number" id="modal-quantity" min="1" value="1">
+                            <button id="increase-quantity">+</button>
+                        </div>
+                    </div>
+                    <button id="add-to-cart-btn" class="btn btn-primary">Add to Cart</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Checkout Modal -->
+    <div id="checkout-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Order Summary</h2>
+            
+            <!-- Delivery Information Box -->
+            <div class="delivery-info-box">
+                <h3>Delivery Information</h3>
+                <ul class="delivery-info-list">
+                    <li>Order cut off timing Monday-Saturday 9am.</li>
+                    <li>Same day delivery if order placed before 9am, delivery window 2pm-10pm</li>
+                    <li>Closed on Sundays and PH.</li>
+                    <li>Contact Customer Service Ordering Hotline: <strong>9155 5465</strong> for urgent requests.</li>
+                    <li>We deliver to all locations in Singapore except restricted zones and the offshore islands.</li>
+                </ul>
+            </div>
+            
+            <!-- Order Items Summary -->
+            <div class="order-summary-section">
+                <h3>Order Items</h3>
+                <div id="summary-items" class="summary-items">
+                    <!-- Order items will be displayed here -->
+                </div>
+                
+                <div class="summary-totals">
+                    <div class="subtotal-row">
+                        <span>Subtotal:</span>
+                        <span id="summary-subtotal">$0.00</span>
+                    </div>
+                    <div class="tax-row">
+                        <span>Tax (9%):</span>
+                        <span id="summary-tax">$0.00</span>
+                    </div>
+                    <div class="total-row">
+                        <span>Total:</span>
+                        <span id="summary-total">$0.00</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="checkout-actions">
+                <button id="place-order-btn" class="btn btn-primary">Place Order</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Floating chatbot -->
+    <div id="chatbot-container" class="chatbot-container">
+        <div id="chatbot-icon" class="chatbot-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 2H4C2.9 2 2 2.9 2 4V22L6 18H20C21.1 18 22 17.1 22 16V4C22 2.9 21.1 2 20 2Z" fill="white"/>
+            </svg>
+        </div>
+        <div id="chatbot-frame" class="chatbot-frame">
+            <iframe src="https://app.relevanceai.com/agents/f1db6c/f099903e0711-4d99-8a1c-6c65b95a8189/772c3d36-ddc1-4f56-8383-4e023aedf1ef/embed-chat?hide_tool_steps=false&hide_file_uploads=false&hide_conversation_list=false&bubble_style=agent&primary_color=%23685FFF&bubble_icon=pd%2Fchat&input_placeholder_text=Type+your+message...&hide_logo=false" 
+                   width="100%" height="100%" frameborder="0"></iframe>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="../js/config.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../js/customer/ordering.js"></script>
+    <script src="../js/payment-reminder.js"></script>
+    
+    <script>
+        // Chatbot toggle functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const chatbotIcon = document.getElementById('chatbot-icon');
+            const chatbotFrame = document.getElementById('chatbot-frame');
+            
+            // Make sure elements exist before adding event listeners
+            if (chatbotIcon && chatbotFrame) {
+                chatbotIcon.addEventListener('click', function() {
+                    if (chatbotFrame.classList.contains('open')) {
+                        chatbotFrame.classList.remove('open');
+                    } else {
+                        chatbotFrame.classList.add('open');
+                    }
+                });
+                
+                // Ensure chatbot icon is visible
+                chatbotIcon.style.display = 'flex';
+                
+                // Log to console for debugging
+                console.log('Chatbot initialized');
+            } else {
+                console.error('Chatbot elements not found');
+            }
+        });
+    </script>
+</body>
+</html> 
