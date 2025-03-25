@@ -1,6 +1,0 @@
-# Disable source map warnings
-<IfModule mod_headers.c>
-    <FilesMatch "\.(js|css|map)$">
-        Header set Access-Control-Allow-Origin "*"
-    </FilesMatch>
-</IfModule>
