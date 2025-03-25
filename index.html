@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Management System</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <h1>Order Management System</h1>
+            <div class="login-form">
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" placeholder="Enter username">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" placeholder="Enter password">
+                </div>
+                <button id="login-btn" class="btn btn-primary">Login</button>
+                <p class="error-message" id="login-error"></p>
+                <div class="guest-login">
+                    <p>Don't have an account? <a href="#" id="guest-login-link">Login as Guest</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Guest Login Modal -->
+    <div id="guest-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Guest Login</h2>
+            <div class="form-group">
+                <label for="guest-name">Name</label>
+                <input type="text" id="guest-name" placeholder="Enter your name">
+            </div>
+            <div class="form-group">
+                <label for="guest-number">Phone Number</label>
+                <input type="tel" id="guest-number" placeholder="Enter your phone number">
+            </div>
+            <div class="form-group">
+                <label for="guest-email">Email</label>
+                <input type="email" id="guest-email" placeholder="Enter your email">
+            </div>
+            <div class="form-group">
+                <label for="guest-company">Company Name</label>
+                <input type="text" id="guest-company" placeholder="Enter company name">
+            </div>
+            <button id="guest-login-btn" class="btn btn-primary">Login as Guest</button>
+            <p class="error-message" id="guest-error"></p>
+        </div>
+    </div>
+
+    <script src="js/config.js"></script>
+    <script src="js/auth.js"></script>
+</body>
+</html> 
